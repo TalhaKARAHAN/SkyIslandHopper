@@ -1,0 +1,26 @@
+from OpenGL.GL import *
+from OpenGL.GLU import *
+
+def draw_fade(alpha, window_width=1920, window_height=1080):
+    glMatrixMode(GL_PROJECTION)
+    glPushMatrix()
+    glLoadIdentity()
+    glOrtho(0, window_width, window_height, 0, -1, 1)
+    glMatrixMode(GL_MODELVIEW)
+    glPushMatrix()
+    glLoadIdentity()
+    glDisable(GL_TEXTURE_2D)
+    glEnable(GL_BLEND)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+    glColor4f(0, 0, 0, alpha)
+    glBegin(GL_QUADS)
+    glVertex2f(0, 0)
+    glVertex2f(window_width, 0)
+    glVertex2f(window_width, window_height)
+    glVertex2f(0, window_height)
+    glEnd()
+    glDisable(GL_BLEND)
+    glPopMatrix()
+    glMatrixMode(GL_PROJECTION)
+    glPopMatrix()
+    glMatrixMode(GL_MODELVIEW) 

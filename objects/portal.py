@@ -1,17 +1,102 @@
 from OpenGL.GL import *
 from OpenGL.GLU import *
+import random
+import math
 
 class Portal:
     def __init__(self, x, y, z):
         self.position = [x, y, z]
-        self.radius = 3.0
+        self.radius = 10  # Portal boyutunu iki katına çıkardık (5'ten 10'a)
+        self.collision_radius = 6.0  # Çarpışma yarıçapını da artırdık (3.0'dan 6.0'a)
+        self.color = (0.0, 1.0, 0.0)  # Yeşil
+        self.animation_time = 0
+        self.particles = []
+        self.generate_particles()
 
-    def draw(self):
+    def generate_particles(self):
+        self.particles = []
+        for _ in range(20):
+            angle = random.uniform(0, 2 * math.pi)
+            speed = random.uniform(0.02, 0.05)
+            self.particles.append({
+                'angle': angle,
+                'speed': speed,
+                'distance': random.uniform(0.5, 1.5),
+                'size': random.uniform(0.1, 0.3)
+            })
+
+    def update_animation(self):
+        self.animation_time += 0.05
+        for particle in self.particles:
+            particle['angle'] += particle['speed']
+            particle['distance'] += math.sin(self.animation_time) * 0.02
+        
+    def draw(self, animating=False, anim_time=0.0, zoom=1.0):
         glPushMatrix()
-        glTranslatef(*self.position)  # Portal pozisyonu
-        glColor3f(0.5, 0.0, 1.0)  # Mor renk
+        glTranslatef(*self.position)
+        # Portal animasyonu: boyut dalgalanması veya zoom
+        scale = 1.0
+        if animating:
+            scale = zoom
+        glScalef(scale, scale, scale)
+        # Portal arka disk (opak)
+        glColor4f(0.0, 0.0, 0.0, 1.0)
         quad = gluNewQuadric()
-        gluDisk(quad, self.radius - 0.2, self.radius, 32, 1)  # Disk şeklinde portal
+        gluDisk(quad, 0, self.radius, 32, 1)
+        # Portal çerçevesi
+        glColor3f(*self.color)
+        gluDisk(quad, self.radius - 0.2, self.radius, 32, 1)  # Çerçeve kalınlığını artırdık
+        # Portal içi
+        glColor4f(*self.color, 0.3)
+        gluDisk(quad, 0, self.radius - 0.2, 32, 1)  # İç disk boyutunu artırdık
+        # Parçacıklar
+        self.update_animation()
+        for particle in self.particles:
+            x = math.cos(particle['angle']) * particle['distance'] * 2  # Parçacık mesafesini artırdık
+            y = math.sin(particle['angle']) * particle['distance'] * 2
+            z = math.sin(anim_time + particle['angle']) * 0.4  # Z hareketini artırdık
+            glPushMatrix()
+            glTranslatef(x, y, z)
+            glColor4f(*self.color, 0.6)
+            gluSphere(quad, particle['size'] * 2, 8, 8)  # Parçacık boyutunu artırdık
+            glPopMatrix()
+        glPopMatrix()
+    
+    def draw_glow_effect(self):
+        glPushMatrix()
+        glTranslatef(*self.position)
+        
+        # Parlama efekti
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        
+        for i in range(3):
+            size = self.radius * (1.2 + i * 0.2)
+            alpha = 0.3 - i * 0.1
+            glColor4f(*self.color, alpha)
+            
+            quad = gluNewQuadric()
+            gluDisk(quad, size - 0.1, size, 32, 1)
+        
+        glDisable(GL_BLEND)
+        glPopMatrix()
+    
+    def draw_portal_depth(self):
+        glPushMatrix()
+        glTranslatef(*self.position)
+        
+        # Portal derinlik efekti
+        glColor4f(*self.color, 0.2)
+        for i in range(5):
+            depth = -i * 0.2
+            size = self.radius * (1.0 - i * 0.1)
+            
+            glPushMatrix()
+            glTranslatef(0, 0, depth)
+            quad = gluNewQuadric()
+            gluDisk(quad, 0, size, 32, 1)
+            glPopMatrix()
+        
         glPopMatrix()
 
     def update(self, delta_time):

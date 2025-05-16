@@ -2,68 +2,84 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 import math
 
-def draw_cube(size):
-    vertices = [
-        [size, -size, -size], [size, size, -size], [-size, size, -size], [-size, -size, -size],
-        [size, -size, size], [size, size, size], [-size, -size, size], [-size, size, size]
-    ]
-    
-    edges = [
-        (0,1), (1,2), (2,3), (3,0),
-        (4,5), (5,7), (7,6), (6,4),
-        (0,4), (1,5), (2,7), (3,6)
-    ]
-    
-    glBegin(GL_QUADS)
-    # Ön yüz
-    glVertex3f(size, -size, -size)
-    glVertex3f(size, size, -size)
-    glVertex3f(-size, size, -size)
-    glVertex3f(-size, -size, -size)
-    
-    # Arka yüz
-    glVertex3f(size, -size, size)
-    glVertex3f(size, size, size)
-    glVertex3f(-size, size, size)
-    glVertex3f(-size, -size, size)
-    
-    # Üst yüz
-    glVertex3f(size, size, -size)
-    glVertex3f(size, size, size)
-    glVertex3f(-size, size, size)
-    glVertex3f(-size, size, -size)
-    
-    # Alt yüz
-    glVertex3f(size, -size, -size)
-    glVertex3f(size, -size, size)
-    glVertex3f(-size, -size, size)
-    glVertex3f(-size, -size, -size)
-    
-    # Sağ yüz
-    glVertex3f(size, -size, -size)
-    glVertex3f(size, size, -size)
-    glVertex3f(size, size, size)
-    glVertex3f(size, -size, size)
-    
-    # Sol yüz
-    glVertex3f(-size, -size, -size)
-    glVertex3f(-size, size, -size)
-    glVertex3f(-size, size, size)
-    glVertex3f(-size, -size, size)
-    glEnd()
+from pygame import K_DOWN, K_LEFT, K_RIGHT, K_SPACE, K_UP
+
+from draw import draw_simple_cube
 
 class Player:
     def __init__(self):
-        self.position = [0.0, 2.5, 0.0]  # x, y, z
+        self.position = [0, 6, 0]  # x, y, z
+        self.velocity = [0, 0, 0]  # x, y, z
         self.radius = 0.5
+        self.color = (1.0, 0.0, 0.0)  # Kırmızı
+        self.rotation = 0
+        self.is_jumping = False
 
     def draw(self):
         glPushMatrix()
-        glTranslatef(*self.position)  # Hareketi uygula
-        glColor3f(0.2, 0.6, 1.0)  # Renk ayarla
-        quad = gluNewQuadric()
-        gluSphere(quad, self.radius, 24, 24)  # Küre çiz
+        glTranslatef(*self.position)
+        glRotatef(self.rotation, 0, 1, 0)
+
+        # Gövde
+        glColor3f(0.8, 0.6, 0.4)
+        glPushMatrix()
+        glScalef(0.4, 1.0, 0.2)
+        draw_simple_cube(1)
         glPopMatrix()
+
+        # Kafa
+        glColor3f(1.0, 0.8, 0.6)
+        glPushMatrix()
+        glTranslatef(0, 0.7, 0)
+        quad = gluNewQuadric()
+        gluSphere(quad, 0.25, 16, 16)
+        glPopMatrix()
+
+        # Bacaklar
+        glColor3f(0.2, 0.2, 0.8)
+        for dx in [-0.15, 0.15]:
+            glPushMatrix()
+            glTranslatef(dx, -0.6, 0)
+            glScalef(0.1, 0.5, 0.1)
+            draw_simple_cube(1)
+            glPopMatrix()
+
+        # Kollar
+        glColor3f(0.8, 0.6, 0.4)
+        for dx in [-0.35, 0.35]:
+            glPushMatrix()
+            glTranslatef(dx, 0.2, 0)
+            glScalef(0.1, 0.5, 0.1)
+            draw_simple_cube(1)
+            glPopMatrix()
+
+        glPopMatrix()
+
+    def update(self, gravity, jump_power, move_speed, keys):
+        # Yatay hareket
+        if keys[K_LEFT]:
+            self.position[0] -= move_speed
+            self.rotation = 90
+        if keys[K_RIGHT]:
+            self.position[0] += move_speed
+            self.rotation = -90
+        # İleri-geri hareket
+        if keys[K_UP]:
+            self.position[2] -= move_speed
+        if keys[K_DOWN]:
+            self.position[2] += move_speed
+        # Zıplama
+        if keys[K_SPACE] and not self.is_jumping:
+            self.velocity[1] = jump_power
+            self.is_jumping = True
+        # Yerçekimi
+        self.velocity[1] -= gravity
+        self.position[1] += self.velocity[1]
+        # Yere değme kontrolü
+        if self.position[1] <= 4.0:  # Yer seviyesi
+            self.position[1] = 4.0
+            self.velocity[1] = 0
+            self.is_jumping = False
 
     def move(self, direction):
         if self.is_dashing:
